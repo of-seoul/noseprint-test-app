@@ -1,4 +1,4 @@
-import React, {useRef, useEffect} from 'react';
+import React, {useRef, useEffect, useCallback, useState} from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Dimensions,
   Alert,
+  GestureResponderEvent,
 } from 'react-native';
 import {
   Camera,
@@ -16,7 +17,7 @@ import {useNavigation, useRoute, RouteProp} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../types/navigation';
 
-const {width: SCREEN_WIDTH} = Dimensions.get('window');
+const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
 const GUIDE_SIZE = SCREEN_WIDTH * 0.6;
 
 type CameraScreenNavigationProp = NativeStackNavigationProp<
@@ -32,6 +33,7 @@ export const CameraScreen = () => {
   const camera = useRef<Camera>(null);
   const device = useCameraDevice('back');
   const {hasPermission, requestPermission} = useCameraPermission();
+  const [focusPoint, setFocusPoint] = useState<{x: number; y: number} | null>(null);
 
   const from = route.params?.from || 'register';
 
@@ -41,15 +43,37 @@ export const CameraScreen = () => {
     }
   }, [hasPermission, requestPermission]);
 
+  // 탭하면 초점 맞추기
+  const handleFocus = useCallback(async (e: GestureResponderEvent) => {
+    if (!camera.current || !device) return;
+
+    const x = e.nativeEvent.locationX;
+    const y = e.nativeEvent.locationY;
+
+    setFocusPoint({x, y});
+
+    try {
+      await camera.current.focus({x, y});
+    } catch (err) {
+      // 포커스 실패는 무시 (일부 기기에서 지원 안 될 수 있음)
+      console.log('Focus failed:', err);
+    }
+
+    // 포커스 표시 1.5초 후 숨기기
+    setTimeout(() => setFocusPoint(null), 1500);
+  }, [device]);
+
   const handleCapture = async () => {
     if (!camera.current) {
       return;
     }
 
     try {
-      const photo = await camera.current.takePhoto();
+      const photo = await camera.current.takePhoto({
+        qualityPrioritization: 'quality',
+        enableShutterSound: true,
+      });
 
-      // 이전 화면으로 이미지 경로 전달
       if (from === 'register') {
         navigation.navigate('Register', {photoPath: photo.path} as any);
       } else if (from === 'identify') {
@@ -92,14 +116,35 @@ export const CameraScreen = () => {
         photo={true}
       />
 
+      {/* 탭 포커스 영역 */}
+      <View
+        style={StyleSheet.absoluteFill}
+        onTouchEnd={handleFocus}
+      >
+        {/* 포커스 인디케이터 */}
+        {focusPoint && (
+          <View
+            style={[
+              styles.focusIndicator,
+              {left: focusPoint.x - 30, top: focusPoint.y - 30},
+            ]}
+          />
+        )}
+      </View>
+
       {/* Guide Overlay */}
-      <View style={styles.overlay}>
+      <View style={styles.overlay} pointerEvents="none">
         <View style={styles.guideContainer}>
-          <View style={styles.guideCircle}>
-            <View style={styles.guideInnerCircle} />
-          </View>
-          <Text style={styles.guideText}>코를 이 안에 맞추세요</Text>
+          <View style={styles.guideCircle} />
+          <Text style={styles.guideText}>
+            🐾 코를 원 안에 맞추고{'\n'}화면을 탭하면 초점이 맞아요
+          </Text>
         </View>
+
+        {/* 거리 안내 */}
+        <Text style={styles.distanceText}>
+          10~15cm 거리에서 촬영하세요
+        </Text>
       </View>
 
       {/* Capture Button */}
@@ -155,27 +200,39 @@ const styles = StyleSheet.create({
     height: GUIDE_SIZE,
     borderRadius: GUIDE_SIZE / 2,
     borderWidth: 3,
-    borderColor: '#fff',
+    borderColor: 'rgba(255, 255, 255, 0.8)',
     borderStyle: 'dashed',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  guideInnerCircle: {
-    width: GUIDE_SIZE * 0.9,
-    height: GUIDE_SIZE * 0.9,
-    borderRadius: (GUIDE_SIZE * 0.9) / 2,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
   guideText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 15,
     marginTop: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: 8,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  distanceText: {
+    color: '#FFD700',
+    fontSize: 14,
+    marginTop: 12,
+    fontWeight: '600',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  focusIndicator: {
+    position: 'absolute',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 2,
+    borderColor: '#FFD700',
+    backgroundColor: 'transparent',
   },
   bottomContainer: {
     position: 'absolute',
