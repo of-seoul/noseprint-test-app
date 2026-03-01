@@ -1,4 +1,4 @@
-import React, {useEffect, useState, useCallback} from 'react';
+import React, {useState, useCallback} from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,6 @@ import {
   FlatList,
   StyleSheet,
   Image,
-  Alert,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {useNavigation, useFocusEffect} from '@react-navigation/native';

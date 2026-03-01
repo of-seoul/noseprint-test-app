@@ -1,4 +1,4 @@
-import React, {useRef, useState, useEffect} from 'react';
+import React, {useRef, useEffect} from 'react';
 import {
   View,
   Text,
@@ -6,13 +6,11 @@ import {
   StyleSheet,
   Dimensions,
   Alert,
-  Platform,
 } from 'react-native';
 import {
   Camera,
   useCameraDevice,
   useCameraPermission,
-  useCodeScanner,
 } from 'react-native-vision-camera';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {useNavigation} from '@react-navigation/native';
@@ -33,7 +31,6 @@ export const CameraScreen = () => {
   const camera = useRef<Camera>(null);
   const device = useCameraDevice('back');
   const {hasPermission, requestPermission} = useCameraPermission();
-  const [isActive, setIsActive] = useState(true);
 
   useEffect(() => {
     if (!hasPermission) {
@@ -103,7 +100,7 @@ export const CameraScreen = () => {
         ref={camera}
         style={StyleSheet.absoluteFill}
         device={device}
-        isActive={isActive}
+        isActive={true}
         photo={true}
       />
 
