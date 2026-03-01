@@ -5,19 +5,18 @@ import {
   TouchableOpacity,
   FlatList,
   StyleSheet,
-  Image,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {useNavigation, useFocusEffect} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../types/navigation';
+import {API_ENDPOINTS} from '../config';
 
-const STORAGE_KEY = 'noseprint_records';
-
-interface NoseprintRecord {
-  id: string;
-  imagePath: string;
-  timestamp: number;
+interface Dog {
+  id: number;
+  name: string;
+  created_at: string;
 }
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<
@@ -27,44 +26,51 @@ type HomeScreenNavigationProp = NativeStackNavigationProp<
 
 export const HomeScreen = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
-  const [records, setRecords] = useState<NoseprintRecord[]>([]);
+  const [dogs, setDogs] = useState<Dog[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const loadRecords = async () => {
+  const loadDogs = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      const stored = await AsyncStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        setRecords(parsed);
+      const response = await fetch(API_ENDPOINTS.DOGS);
+      if (!response.ok) {
+        throw new Error('서버 응답 오류');
       }
-    } catch (error) {
-      console.error('Failed to load records:', error);
+      const data = await response.json();
+      setDogs(data.dogs || []);
+    } catch (err) {
+      console.error('Failed to load dogs:', err);
+      setError('서버 연결 실패');
+      setDogs([]);
+    } finally {
+      setLoading(false);
     }
   };
 
   useFocusEffect(
     useCallback(() => {
-      loadRecords();
+      loadDogs();
     }, []),
   );
 
-  const handleCapture = () => {
-    navigation.navigate('Camera');
+  const handleRegister = () => {
+    navigation.navigate('Register');
   };
 
-  const renderRecord = ({item}: {item: NoseprintRecord}) => {
-    const date = new Date(item.timestamp);
+  const handleIdentify = () => {
+    navigation.navigate('Identify');
+  };
+
+  const renderDog = ({item}: {item: Dog}) => {
+    const date = new Date(item.created_at);
     return (
-      <View style={styles.recordItem}>
-        <Image
-          source={{uri: `file://${item.imagePath}`}}
-          style={styles.thumbnail}
-        />
-        <View style={styles.recordInfo}>
-          <Text style={styles.recordDate}>
+      <View style={styles.dogItem}>
+        <View style={styles.dogInfo}>
+          <Text style={styles.dogName}>{item.name}</Text>
+          <Text style={styles.dogDate}>
             {date.toLocaleDateString()} {date.toLocaleTimeString()}
-          </Text>
-          <Text style={styles.recordPath} numberOfLines={1}>
-            {item.imagePath}
           </Text>
         </View>
       </View>
@@ -73,21 +79,40 @@ export const HomeScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>코 지문 촬영 테스트</Text>
+      <Text style={styles.title}>🐾 코 지문 테스트</Text>
 
-      <TouchableOpacity style={styles.captureButton} onPress={handleCapture}>
-        <Text style={styles.captureButtonText}>촬영하기</Text>
-      </TouchableOpacity>
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity
+          style={[styles.mainButton, styles.registerButton]}
+          onPress={handleRegister}>
+          <Text style={styles.mainButtonText}>등록하기</Text>
+        </TouchableOpacity>
 
-      <View style={styles.recordsContainer}>
-        <Text style={styles.recordsTitle}>촬영 기록</Text>
-        {records.length === 0 ? (
-          <Text style={styles.emptyText}>촬영 기록이 없습니다</Text>
+        <TouchableOpacity
+          style={[styles.mainButton, styles.identifyButton]}
+          onPress={handleIdentify}>
+          <Text style={styles.mainButtonText}>확인하기</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.dogsContainer}>
+        <Text style={styles.dogsTitle}>등록된 강아지 목록</Text>
+        {loading ? (
+          <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={loadDogs}>
+              <Text style={styles.retryButtonText}>다시 시도</Text>
+            </TouchableOpacity>
+          </View>
+        ) : dogs.length === 0 ? (
+          <Text style={styles.emptyText}>등록된 강아지가 없습니다</Text>
         ) : (
           <FlatList
-            data={records}
-            renderItem={renderRecord}
-            keyExtractor={item => item.id}
+            data={dogs}
+            renderItem={renderDog}
+            keyExtractor={item => item.id.toString()}
           />
         )}
       </View>
@@ -102,59 +127,85 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginVertical: 30,
+    marginVertical: 20,
   },
-  captureButton: {
-    backgroundColor: '#007AFF',
+  buttonContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 30,
+  },
+  mainButton: {
+    flex: 1,
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',
-    marginBottom: 30,
   },
-  captureButtonText: {
+  registerButton: {
+    backgroundColor: '#007AFF',
+  },
+  identifyButton: {
+    backgroundColor: '#34C759',
+  },
+  mainButtonText: {
     color: '#fff',
     fontSize: 18,
     fontWeight: '600',
   },
-  recordsContainer: {
+  dogsContainer: {
     flex: 1,
   },
-  recordsTitle: {
+  dogsTitle: {
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 16,
+  },
+  loader: {
+    marginTop: 20,
+  },
+  errorContainer: {
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 14,
+    marginBottom: 12,
+  },
+  retryButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   emptyText: {
     textAlign: 'center',
     color: '#999',
     marginTop: 20,
   },
-  recordItem: {
+  dogItem: {
     flexDirection: 'row',
     padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
-  thumbnail: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
-    backgroundColor: '#f0f0f0',
-  },
-  recordInfo: {
+  dogInfo: {
     flex: 1,
-    marginLeft: 12,
     justifyContent: 'center',
   },
-  recordDate: {
-    fontSize: 14,
+  dogName: {
+    fontSize: 16,
     fontWeight: '600',
     marginBottom: 4,
   },
-  recordPath: {
+  dogDate: {
     fontSize: 12,
     color: '#666',
   },

@@ -1,4 +1,8 @@
 export type RootStackParamList = {
   Home: undefined;
-  Camera: undefined;
+  Register: undefined;
+  Identify: undefined;
+  Camera: {
+    from: 'register' | 'identify';
+  };
 };

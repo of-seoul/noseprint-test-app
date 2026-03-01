@@ -12,25 +12,28 @@ import {
   useCameraDevice,
   useCameraPermission,
 } from 'react-native-vision-camera';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import {useNavigation} from '@react-navigation/native';
+import {useNavigation, useRoute, RouteProp} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../types/navigation';
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
 const GUIDE_SIZE = SCREEN_WIDTH * 0.6;
-const STORAGE_KEY = 'noseprint_records';
 
 type CameraScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
   'Camera'
 >;
 
+type CameraScreenRouteProp = RouteProp<RootStackParamList, 'Camera'>;
+
 export const CameraScreen = () => {
   const navigation = useNavigation<CameraScreenNavigationProp>();
+  const route = useRoute<CameraScreenRouteProp>();
   const camera = useRef<Camera>(null);
   const device = useCameraDevice('back');
   const {hasPermission, requestPermission} = useCameraPermission();
+
+  const from = route.params?.from || 'register';
 
   useEffect(() => {
     if (!hasPermission) {
@@ -46,25 +49,12 @@ export const CameraScreen = () => {
     try {
       const photo = await camera.current.takePhoto();
 
-      // Save to AsyncStorage
-      const record = {
-        id: Date.now().toString(),
-        imagePath: photo.path,
-        timestamp: Date.now(),
-      };
-
-      const stored = await AsyncStorage.getItem(STORAGE_KEY);
-      const records = stored ? JSON.parse(stored) : [];
-      records.unshift(record);
-
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-
-      Alert.alert('촬영 완료', '이미지가 저장되었습니다', [
-        {
-          text: '확인',
-          onPress: () => navigation.goBack(),
-        },
-      ]);
+      // 이전 화면으로 이미지 경로 전달
+      if (from === 'register') {
+        navigation.navigate('Register', {photoPath: photo.path} as any);
+      } else if (from === 'identify') {
+        navigation.navigate('Identify', {photoPath: photo.path} as any);
+      }
     } catch (error) {
       console.error('Failed to capture:', error);
       Alert.alert('오류', '촬영에 실패했습니다');
@@ -74,9 +64,7 @@ export const CameraScreen = () => {
   if (!hasPermission) {
     return (
       <View style={styles.container}>
-        <Text style={styles.permissionText}>
-          카메라 권한이 필요합니다
-        </Text>
+        <Text style={styles.permissionText}>카메라 권한이 필요합니다</Text>
         <TouchableOpacity
           style={styles.permissionButton}
           onPress={requestPermission}>
@@ -116,9 +104,7 @@ export const CameraScreen = () => {
 
       {/* Capture Button */}
       <View style={styles.bottomContainer}>
-        <TouchableOpacity
-          style={styles.captureButton}
-          onPress={handleCapture}>
+        <TouchableOpacity style={styles.captureButton} onPress={handleCapture}>
           <View style={styles.captureButtonInner} />
         </TouchableOpacity>
       </View>
