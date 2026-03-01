@@ -5,6 +5,8 @@ import {HomeScreen} from './src/screens/HomeScreen';
 import {RegisterScreen} from './src/screens/RegisterScreen';
 import {IdentifyScreen} from './src/screens/IdentifyScreen';
 import {CameraScreen} from './src/screens/CameraScreen';
+import {CaptureGuideScreen} from './src/screens/CaptureGuideScreen';
+import {RegisterResultScreen} from './src/screens/RegisterResultScreen';
 import type {RootStackParamList} from './src/types/navigation';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -38,11 +40,28 @@ function App(): React.JSX.Element {
           }}
         />
         <Stack.Screen
+          name="CaptureGuide"
+          component={CaptureGuideScreen}
+          options={{
+            title: '촬영 가이드',
+            headerShown: true,
+          }}
+        />
+        <Stack.Screen
           name="Camera"
           component={CameraScreen}
           options={{
             title: '',
             headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="RegisterResult"
+          component={RegisterResultScreen}
+          options={{
+            title: '등록 완료',
+            headerShown: true,
+            headerLeft: () => null, // 뒤로 가기 버튼 제거
           }}
         />
       </Stack.Navigator>

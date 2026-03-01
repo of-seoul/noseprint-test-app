@@ -4,4 +4,5 @@ export const API_ENDPOINTS = {
   REGISTER: `${API_BASE_URL}/api/register`,
   IDENTIFY: `${API_BASE_URL}/api/identify`,
   DOGS: `${API_BASE_URL}/api/dogs`,
+  CHECK_QUALITY: `${API_BASE_URL}/api/check-quality`,
 };

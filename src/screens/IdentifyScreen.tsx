@@ -38,17 +38,22 @@ export const IdentifyScreen = () => {
   // Camera screen에서 돌아올 때 photo path 받기
   React.useEffect(() => {
     if (route.params && 'photoPath' in route.params) {
-      setPhotoPath((route.params as any).photoPath);
-      setResult(null); // 새로 촬영하면 결과 초기화
+      const newPhotoPath = (route.params as any).photoPath;
+      setPhotoPath(newPhotoPath);
+      setResult(null);
+      
+      // 자동으로 identify 실행
+      handleIdentifyWithPath(newPhotoPath);
     }
   }, [route.params]);
 
   const handleTakePhoto = () => {
-    navigation.navigate('Camera', {from: 'identify'});
+    // 가이드 화면으로 이동
+    navigation.navigate('CaptureGuide', {from: 'identify'});
   };
 
-  const handleIdentify = async () => {
-    if (!photoPath) {
+  const handleIdentifyWithPath = async (path: string) => {
+    if (!path) {
       Alert.alert('알림', '코 사진을 촬영해주세요');
       return;
     }
@@ -58,7 +63,7 @@ export const IdentifyScreen = () => {
     try {
       const formData = new FormData();
       formData.append('image', {
-        uri: `file://${photoPath}`,
+        uri: `file://${path}`,
         type: 'image/jpeg',
         name: 'nose.jpg',
       } as any);
@@ -83,6 +88,14 @@ export const IdentifyScreen = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleIdentify = async () => {
+    if (!photoPath) {
+      handleTakePhoto();
+      return;
+    }
+    await handleIdentifyWithPath(photoPath);
   };
 
   const renderResult = () => {
@@ -127,46 +140,44 @@ export const IdentifyScreen = () => {
       <Text style={styles.title}>강아지 확인</Text>
       <Text style={styles.subtitle}>코를 촬영해서 누구인지 확인해보세요</Text>
 
-      <View style={styles.photoContainer}>
-        <Text style={styles.label}>코 사진</Text>
-        <TouchableOpacity
-          style={styles.photoButton}
-          onPress={handleTakePhoto}
-          disabled={loading}>
-          {photoPath ? (
+      {photoPath && (
+        <View style={styles.photoContainer}>
+          <Text style={styles.label}>촬영한 사진</Text>
+          <View style={styles.photoWrapper}>
             <Image
               source={{uri: `file://${photoPath}`}}
               style={styles.photoPreview}
             />
-          ) : (
-            <View style={styles.photoPlaceholder}>
-              <Text style={styles.photoPlaceholderText}>📷</Text>
-              <Text style={styles.photoPlaceholderLabel}>코 촬영하기</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-        {photoPath && (
-          <TouchableOpacity
-            style={styles.retakeButton}
-            onPress={handleTakePhoto}
-            disabled={loading}>
-            <Text style={styles.retakeButtonText}>다시 촬영하기</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+          </View>
+        </View>
+      )}
 
       <TouchableOpacity
-        style={[styles.identifyButton, loading && styles.identifyButtonDisabled]}
-        onPress={handleIdentify}
+        style={styles.captureButton}
+        onPress={handleTakePhoto}
         disabled={loading}>
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.identifyButtonText}>확인</Text>
-        )}
+        <Text style={styles.captureButtonIcon}>📷</Text>
+        <Text style={styles.captureButtonText}>
+          {photoPath ? '다시 촬영하기' : '코 촬영하기'}
+        </Text>
       </TouchableOpacity>
 
+      {loading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#34C759" />
+          <Text style={styles.loadingText}>확인 중...</Text>
+        </View>
+      )}
+
       {renderResult()}
+
+      {result && (
+        <TouchableOpacity
+          style={styles.retryButton}
+          onPress={handleTakePhoto}>
+          <Text style={styles.retryButtonText}>다시 촬영하기</Text>
+        </TouchableOpacity>
+      )}
     </ScrollView>
   );
 };
@@ -178,86 +189,72 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
+    paddingTop: 40,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 8,
     textAlign: 'center',
+    color: '#333',
   },
   subtitle: {
     fontSize: 14,
     color: '#666',
-    marginBottom: 30,
+    marginBottom: 32,
     textAlign: 'center',
   },
   photoContainer: {
-    marginBottom: 30,
+    marginBottom: 24,
   },
   label: {
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 8,
+    color: '#333',
   },
-  photoButton: {
-    width: '100%',
-    aspectRatio: 1,
-    borderRadius: 8,
+  photoWrapper: {
+    borderRadius: 12,
     overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: '#34C759',
   },
   photoPreview: {
     width: '100%',
-    height: '100%',
+    aspectRatio: 1,
   },
-  photoPlaceholder: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#f5f5f5',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#ddd',
-    borderStyle: 'dashed',
-  },
-  photoPlaceholderText: {
-    fontSize: 48,
-    marginBottom: 8,
-  },
-  photoPlaceholderLabel: {
-    fontSize: 16,
-    color: '#666',
-  },
-  retakeButton: {
-    marginTop: 12,
-    padding: 12,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  retakeButtonText: {
-    fontSize: 14,
-    color: '#34C759',
-    fontWeight: '600',
-  },
-  identifyButton: {
+  captureButton: {
     backgroundColor: '#34C759',
-    padding: 16,
-    borderRadius: 8,
+    padding: 20,
+    borderRadius: 12,
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 24,
+    flexDirection: 'row',
+    justifyContent: 'center',
   },
-  identifyButtonDisabled: {
-    backgroundColor: '#ccc',
+  captureButtonIcon: {
+    fontSize: 24,
+    marginRight: 8,
   },
-  identifyButtonText: {
+  captureButtonText: {
     color: '#fff',
     fontSize: 18,
     fontWeight: '600',
   },
-  resultContainer: {
+  loadingContainer: {
+    alignItems: 'center',
     padding: 20,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#666',
+  },
+  resultContainer: {
+    padding: 24,
     borderRadius: 12,
     alignItems: 'center',
+    marginBottom: 16,
   },
   resultSuccess: {
     backgroundColor: '#E8F5E9',
@@ -274,9 +271,10 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   resultText: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
     marginBottom: 8,
+    color: '#333',
   },
   resultSimilarity: {
     fontSize: 16,
@@ -286,5 +284,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#999',
     marginTop: 8,
+    textAlign: 'center',
+  },
+  retryButton: {
+    padding: 16,
+    alignItems: 'center',
+  },
+  retryButtonText: {
+    color: '#34C759',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
