@@ -191,7 +191,7 @@ export const CameraScreen = () => {
 
     try {
       const photo = await camera.current.takePhoto({
-        qualityPrioritization: 'quality',
+        
         enableShutterSound: true,
       });
 
