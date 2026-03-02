@@ -81,7 +81,19 @@ export const IdentifyScreen = () => {
       }
 
       const data = await response.json();
-      setResult(data);
+      // 서버 응답 → 앱 형식 변환
+      if (data.success && data.match) {
+        setResult({
+          matched: true,
+          name: data.match.name,
+          similarity: data.match.similarity,
+        });
+      } else {
+        setResult({
+          matched: false,
+          message: data.message || '일치하는 강아지가 없습니다',
+        });
+      }
     } catch (error) {
       console.error('Failed to identify:', error);
       Alert.alert('오류', '서버 연결 실패\n나중에 다시 시도해주세요');
